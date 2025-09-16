@@ -11,4 +11,4 @@ The analysis explores sales trends and provides visualization.
 - `items.csv` – synthetic items data
 
 ## View Report
-You can view the full analysis [here](docs/sales_analysis.html).
+You can view the full analysis [here](docs/faux_sales_analysis.html).
