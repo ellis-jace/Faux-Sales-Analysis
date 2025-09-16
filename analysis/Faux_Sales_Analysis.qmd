@@ -1,0 +1,118 @@
+---
+title: "Synthetic Sales Data Analysis"
+author: "JEllis"
+format: html
+editor: visual
+execute:
+  echo: TRUE
+---
+
+# An Analysis of Synthetic Toast Point of Sales Data
+
+Using "Data Simulator 4.0", a community-made GPT on ChatGPT.com, I generated synthetic sales data that mimics a 'Toast' Point of Sales system for a coffee shop. I told the GPT to simulate traffic that would be consistent with a college town: higher sales during move-in periods, lower sales during semester breaks, large events like football games, and academic periods which draw attention to popular study spots like cafes.
+
+## Initializing the Data
+
+Data Simulator returned two csv files, one containing transations and the other containing the items in each transaction. I will read these files into the environment, then merge them to get a good idea of the set.
+
+```{r}
+# Read each csv into environment
+library(here)
+transactions <- read.csv(here("data", "transactions.csv"))
+items <- read.csv(here("data", "items.csv"))
+
+# Merge datasets on transaction_id
+dat_full <- merge(transactions, items, by="transaction_id")
+head(dat_full)
+```
+
+This merged dataset provides opportunities for further analyzing the data. However, it is too broad as is for analyzing sales information. In order to clean sales data for analyzing, I am going to create a dataset that merges transaction_id and will give me a single total_amount.
+
+```{r}
+# Create sales_dat dataset that drops duplicated transaction ids.
+sales_dat <- dat_full[!duplicated(dat_full$transaction_id),]
+```
+
+### Relationship of sales and time.
+
+To understand sales over time, I will first disect how sales manifest each day of the week.
+
+```{r}
+# Install 'ggplot2' and 'RColorBrewer' packages to environment for plotting.
+library(ggplot2)
+library(RColorBrewer)
+
+# First, I will plot total sales per each day of the week. 
+# In order to do this, I need to make sure the 'timestamp' column has proper formatting.
+
+class(sales_dat$timestamp)
+
+# The current class for 'timestamp' is character, which is not correct.
+# I will convert it to the native 'date' format for r. 
+
+sales_dat$timestamp <- as.Date(sales_dat$timestamp,
+                               format = "%Y-%m-%d %H:%M:%S")
+head(sales_dat$timestamp)
+
+# Now that 'timestamp' is formatted correctly, I will create new columns  
+# that label which weekday and month each sale occurred.
+sales_dat$weekday <- format(sales_dat$timestamp, "%A")
+sales_dat$month <- format(sales_dat$timestamp, "%B")
+
+# From here, I can create datasets based around weekday and month data
+daily_sales <- aggregate(total_amount ~ weekday, data = sales_dat, FUN = sum)
+# Set the 'weekday' column as a factor in order to maintain order of weekdays.
+daily_sales$weekday <- factor(daily_sales$weekday, 
+                              levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                              ordered = TRUE)
+daily_sales <- daily_sales[order(daily_sales$weekday),]   #Force order for plotting
+
+# Create bar plot using ggplot2 to show distribution of total daily sales. 
+ggplot(data = daily_sales) +
+  geom_col(mapping = aes(x=weekday, y=total_amount), fill="steelblue1") +
+  scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
+  labs(title = "Total Sales by Weekday",
+       x = "Day of Week", y = "Total Sales")
+
+```
+
+From this simple barplot, I can see an obvious influx in sales on Saturday. Because I instructed the GPT to mimic college town data, this could reflect the effect that football games have on local business, since college football games usually happen on Saturday. From here, I will plot sales by month to see if Saturdays are higher during football season.
+
+```{r}
+# Repeat previous code for changing 'weekday' and 'month' column to factors
+# and forcing their order to maintain clarity in plotting
+sales_dat$weekday <- factor(sales_dat$weekday, 
+                              levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+                              ordered = TRUE)
+sales_dat <- sales_dat[order(sales_dat$weekday),]   #Force order for plotting
+
+sales_dat$month <- factor(sales_dat$month, 
+                              levels = c("April", "May", "June", "July", "August", "September"),
+                              ordered = TRUE)
+sales_dat <- sales_dat[order(sales_dat$month),]   #Force order for plotting
+
+# Plot bar graph to represent daily sales during each month recorded. 
+ggplot(data = sales_dat) +
+  geom_col(mapping = aes(x = weekday, y = total_amount, fill = weekday)) +
+  facet_wrap(~ month, ncol = 3) +
+  scale_x_discrete(name = "Weekday", 
+                   labels = c("Monday" = "M", 
+                              "Tuesday" = "T",
+                              "Wednesday" = "W",
+                              "Thursday" = "T",
+                              "Friday" = "F",
+                              "Saturday" = "St",
+                              "Sunday" = "Sn")) +
+  labs(title = "Sales per weekday by month",
+         y = "Total Sales") +
+  scale_fill_brewer(palette = 'RdGy') +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+
+```
+
+From this plot, I can see that sales are significantly higher on Saturdays in September, which is the month that college football begins. Therefore, I can assume that the college football season does impact sales volume at this coffee shop. This plot also confirms that sales volume slightly declines during semester breaks, in this case June and July.
+
+\*\* Sales breakdown by item and order volume

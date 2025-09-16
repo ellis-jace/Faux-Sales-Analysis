@@ -1,0 +1,8 @@
+"0","# Read each csv into environment"
+"0","library(here)"
+"0","transactions <- read.csv(here(""data"", ""transactions.csv""))"
+"0","items <- read.csv(here(""data"", ""items.csv""))"
+"0",""
+"0","# Merge datasets on transaction_id"
+"0","dat_full <- merge(transactions, items, by=""transaction_id"")"
+"0","head(dat_full)"

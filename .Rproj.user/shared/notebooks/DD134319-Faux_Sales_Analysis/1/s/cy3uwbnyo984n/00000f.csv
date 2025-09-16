@@ -1,0 +1,2 @@
+"0","# Create sales_dat dataset that drops duplicated transaction ids."
+"0","sales_dat <- dat_full[!duplicated(dat_full$transaction_id),]"
